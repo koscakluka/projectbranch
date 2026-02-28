@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -60,6 +61,20 @@ export function createGitShellPort() {
       }
 
       return remotes;
+    },
+
+    async getCommonDirectory(repositoryPath) {
+      const output = await runGit(repositoryPath, ["rev-parse", "--git-common-dir"]);
+      if (!output) {
+        return repositoryPath;
+      }
+
+      return path.isAbsolute(output) ? output : path.resolve(repositoryPath, output);
+    },
+
+    async isBareRepository(repositoryPath) {
+      const output = await runGit(repositoryPath, ["rev-parse", "--is-bare-repository"]);
+      return output === "true";
     },
   };
 }
