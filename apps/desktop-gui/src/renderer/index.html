@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProjectBranch Desktop POC</title>
+    <style>
+      :root {
+        --bg: #f5f8f1;
+        --bg-2: #eef3ea;
+        --card: #ffffff;
+        --text: #143022;
+        --muted: #4c695b;
+        --line: #d4dfd7;
+        --accent: #2c8e5f;
+        --accent-2: #bf6f2f;
+        --accent-soft: #e8f5ee;
+        --danger: #c23b2a;
+        --shadow: 0 18px 45px rgba(45, 67, 54, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(1000px 500px at 4% 0%, #d8ebd6 0%, transparent 65%),
+          radial-gradient(1000px 500px at 96% 0%, #f8e2cf 0%, transparent 58%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      }
+
+      .app {
+        padding: 22px;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 14px;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--card) 88%, #e4efde 12%);
+        box-shadow: var(--shadow);
+        border-radius: 18px;
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .headline {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .headline h1 {
+        margin: 0;
+        font-size: 1.55rem;
+        letter-spacing: 0.01em;
+      }
+
+      .headline p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        border: 1px solid transparent;
+        border-radius: 11px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 620;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      .primary {
+        background: linear-gradient(135deg, #2f9d68, #268455);
+        color: #f7fffb;
+        box-shadow: 0 8px 20px rgba(37, 122, 80, 0.25);
+      }
+
+      .secondary {
+        background: #fff6f0;
+        color: #7d4a1f;
+        border-color: #f1d8c4;
+      }
+
+      .ghost {
+        background: #f5f9f6;
+        border-color: var(--line);
+        color: #2a4f3c;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px 1fr 310px;
+        gap: 14px;
+        min-height: 0;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--card) 92%, #eaf4e8 8%);
+        box-shadow: var(--shadow);
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .panel header {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 14px;
+        font-weight: 700;
+      }
+
+      .panel-body {
+        padding: 10px;
+        overflow: auto;
+      }
+
+      .projects {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .project-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px;
+        background: #f9fdf9;
+        cursor: pointer;
+        display: grid;
+        gap: 5px;
+      }
+
+      .project-item.active {
+        border-color: #6bb78f;
+        background: var(--accent-soft);
+      }
+
+      .project-title {
+        font-weight: 680;
+        font-size: 0.92rem;
+      }
+
+      .project-meta {
+        color: var(--muted);
+        font-size: 0.79rem;
+        word-break: break-all;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 0.73rem;
+        border: 1px solid #cfe5d6;
+        background: #effaf2;
+        color: #31664a;
+        width: max-content;
+      }
+
+      .chip.warn {
+        border-color: #edd8c8;
+        background: #fff4eb;
+        color: #835228;
+      }
+
+      textarea {
+        width: 100%;
+        height: calc(100vh - 295px);
+        min-height: 320px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        font: 0.95rem/1.5 "IBM Plex Mono", "SF Mono", monospace;
+        background: #fbfefb;
+        color: #1f3127;
+      }
+
+      .editor-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 9px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 10px;
+        background: #fbfefc;
+        display: grid;
+        gap: 8px;
+      }
+
+      .box h3 {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+
+      select {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 8px;
+        font: inherit;
+        background: #fff;
+      }
+
+      .error {
+        color: var(--danger);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <section class="topbar">
+        <div class="headline">
+          <h1>ProjectBranch Desktop POC</h1>
+          <p>Discover docs, edit plans, and switch branches in one place.</p>
+        </div>
+        <div class="controls">
+          <button id="pickFolders" class="primary">Pick Workspace Folders</button>
+          <button id="discoverProjects" class="secondary">Discover Docs Projects</button>
+          <button id="refreshProject" class="ghost">Refresh Selected Project</button>
+        </div>
+        <div id="status" class="status">Ready.</div>
+      </section>
+
+      <section class="layout">
+        <article class="panel">
+          <header>Discovered Projects</header>
+          <div class="panel-body">
+            <div id="rootsSummary" class="status">No root folders selected yet.</div>
+            <ul id="projects" class="projects"></ul>
+          </div>
+        </article>
+
+        <article class="panel">
+          <header>Document Editor</header>
+          <div class="panel-body">
+            <div id="editorMeta" class="status">Pick a project to load `docs/project/README.md`.</div>
+            <textarea id="editor" spellcheck="false" disabled></textarea>
+            <div class="editor-actions">
+              <button id="saveDoc" class="primary" disabled>Save README.md</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <header>Repository Context</header>
+          <div class="panel-body stack">
+            <div class="box">
+              <h3>Branch</h3>
+              <div id="activeBranch" class="status">No repository selected.</div>
+              <select id="branchList" disabled></select>
+              <button id="switchBranch" class="secondary" disabled>Switch Branch</button>
+            </div>
+
+            <div class="box">
+              <h3>Remote Mapping</h3>
+              <div id="mappingStatus" class="status">No repository selected.</div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

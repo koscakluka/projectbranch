@@ -1,0 +1,14 @@
+{
+  "name": "@projectbranch/desktop-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@projectbranch/core": "workspace:*",
+    "@projectbranch/node-adapters": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "poc": "node src/run-poc.mjs"
+  }
+}
