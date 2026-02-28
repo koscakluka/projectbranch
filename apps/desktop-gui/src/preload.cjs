@@ -13,6 +13,7 @@ function onRootPathsChanged(callback) {
 
 contextBridge.exposeInMainWorld("desktopApi", {
   openSettingsWindow: () => ipcRenderer.invoke("settings:open"),
+  openExternalLink: (url) => ipcRenderer.invoke("external:open", url),
   getRootPaths: () => ipcRenderer.invoke("roots:get"),
   onRootPathsChanged,
   discoverProjects: (rootPaths) => ipcRenderer.invoke("projects:discover", rootPaths),

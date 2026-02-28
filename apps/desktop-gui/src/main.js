@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import {
   BranchService,
   DiscoveryService,
@@ -156,6 +156,15 @@ ipcMain.handle("branch:switch", async (_event, repositoryPath, branchName) => {
 ipcMain.handle("repo:get-mapping", async (_event, repositoryPath) => {
   const remotes = await branchService.getRemotes(repositoryPath);
   return mapLocalRepositoryToGitHub({ remotes });
+});
+
+ipcMain.handle("external:open", async (_event, url) => {
+  if (typeof url !== "string" || !(url.startsWith("https://") || url.startsWith("http://"))) {
+    throw new Error("Invalid external URL");
+  }
+
+  await shell.openExternal(url);
+  return true;
 });
 
 app.whenReady().then(() => {

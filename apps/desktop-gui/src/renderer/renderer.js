@@ -1,10 +1,10 @@
 import {
   docsSetupLabel,
-  mappingLabel,
   projectLabel,
   projectSetupSummary,
   worktreeLabel,
 } from "./view-model.js";
+import { markdownStats, renderMarkdown, richTextToMarkdown } from "./markdown-preview.js";
 
 const desktopApi = window.desktopApi;
 
@@ -22,6 +22,8 @@ const statusEl = document.getElementById("status");
 const projectsEl = document.getElementById("projects");
 const editorMetaEl = document.getElementById("editorMeta");
 const editorEl = document.getElementById("editor");
+const editorStatsEl = document.getElementById("editorStats");
+const toolbarEl = document.getElementById("editorToolbar");
 const saveDocEl = document.getElementById("saveDoc");
 const projectPathEl = document.getElementById("projectPath");
 const projectSetupEl = document.getElementById("projectSetup");
@@ -31,10 +33,10 @@ const worktreeListEl = document.getElementById("worktreeList");
 const activeBranchEl = document.getElementById("activeBranch");
 const branchListEl = document.getElementById("branchList");
 const switchBranchEl = document.getElementById("switchBranch");
-const mappingStatusEl = document.getElementById("mappingStatus");
 const mappingLinkEl = document.getElementById("mappingLink");
 const openSettingsEl = document.getElementById("openSettings");
 const refreshProjectEl = document.getElementById("refreshProject");
+const toolbarButtons = toolbarEl ? Array.from(toolbarEl.querySelectorAll("button[data-editor-action]")) : [];
 
 function hasUnsavedChanges() {
   return state.editorText !== state.originalText;
@@ -67,8 +69,12 @@ function setStatus(message, isError = false) {
 }
 
 function setEditorState(enabled) {
-  editorEl.disabled = !enabled;
+  editorEl.contentEditable = enabled ? "true" : "false";
+  editorEl.setAttribute("aria-disabled", enabled ? "false" : "true");
   saveDocEl.disabled = !enabled;
+  for (const button of toolbarButtons) {
+    button.disabled = !enabled;
+  }
 }
 
 function setControlsEnabled(enabled) {
@@ -76,12 +82,93 @@ function setControlsEnabled(enabled) {
   refreshProjectEl.disabled = !enabled;
 }
 
+function updateEditorStats() {
+  const stats = markdownStats(state.editorText);
+  const lineLabel = stats.lines === 1 ? "line" : "lines";
+  const wordLabel = stats.words === 1 ? "word" : "words";
+  editorStatsEl.textContent = `${stats.words} ${wordLabel} - ${stats.lines} ${lineLabel}`;
+}
+
+function ensureEditorMarkup() {
+  if (!editorEl.textContent?.trim() && !editorEl.querySelector("img,pre,code,blockquote,ul,ol,h1,h2,h3,h4,h5,h6,p")) {
+    editorEl.innerHTML = "<p><br></p>";
+  }
+}
+
+function applyMarkdownToEditor(markdownText) {
+  const html = renderMarkdown(markdownText).trim();
+  editorEl.innerHTML = html || "<p><br></p>";
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderEditorMeta() {
+  const selectedWorktree = getSelectedWorktree();
+  const marker = hasUnsavedChanges() ? " (unsaved changes)" : "";
+  editorMetaEl.textContent = selectedWorktree
+    ? `Editing ${currentReadmePath(selectedWorktree)}${marker}`
+    : "Pick a project to load docs.";
+}
+
+function handleEditorInput() {
+  state.editorText = richTextToMarkdown(editorEl.innerHTML);
+  renderEditorMeta();
+  updateEditorStats();
+}
+
+function executeEditorAction(action) {
+  if (!action || editorEl.contentEditable !== "true") {
+    return;
+  }
+
+  editorEl.focus();
+
+  if (action === "heading") {
+    document.execCommand("formatBlock", false, "h2");
+  } else if (action === "bold") {
+    document.execCommand("bold");
+  } else if (action === "italic") {
+    document.execCommand("italic");
+  } else if (action === "list") {
+    document.execCommand("insertUnorderedList");
+  } else if (action === "quote") {
+    document.execCommand("formatBlock", false, "blockquote");
+  } else if (action === "link") {
+    const href = window.prompt("Link URL", "https://");
+    if (href) {
+      document.execCommand("createLink", false, href.trim());
+    }
+  } else if (action === "code") {
+    const selection = window.getSelection();
+    const selectedText = selection ? selection.toString() : "";
+    const safeText = escapeHtml(selectedText || "code snippet");
+    document.execCommand("insertHTML", false, `<pre><code>${safeText}</code></pre>`);
+  }
+
+  ensureEditorMarkup();
+  handleEditorInput();
+}
+
 function clearEditor(metaText, allowEditing = false) {
   state.editorText = "";
   state.originalText = "";
-  editorEl.value = "";
+  editorEl.innerHTML = "";
+  editorEl.dataset.placeholder = allowEditing
+    ? "Start writing README content with the toolbar."
+    : "Pick a project to start editing.";
   editorMetaEl.textContent = metaText;
   setEditorState(allowEditing);
+  if (allowEditing) {
+    ensureEditorMarkup();
+  }
+  updateEditorStats();
 }
 
 function setChip(element, text, warn = false) {
@@ -187,7 +274,6 @@ function resetRepositoryContext() {
   branchListEl.innerHTML = "";
   branchListEl.disabled = true;
   switchBranchEl.disabled = true;
-  mappingStatusEl.textContent = "No repository selected.";
   mappingLinkEl.hidden = true;
   mappingLinkEl.href = "#";
 }
@@ -244,16 +330,13 @@ async function refreshRepositoryContext(worktree) {
   try {
     const mappingResult = await desktopApi.getRepoMapping(worktree.repositoryPath);
     if (mappingResult?.mapping?.fullName) {
-      mappingStatusEl.textContent = "Connected repository";
       mappingLinkEl.href = `https://github.com/${mappingResult.mapping.fullName}`;
       mappingLinkEl.hidden = false;
     } else {
-      mappingStatusEl.textContent = mappingLabel(mappingResult);
       mappingLinkEl.hidden = true;
       mappingLinkEl.href = "#";
     }
   } catch (error) {
-    mappingStatusEl.textContent = `Mapping unavailable: ${error.message}`;
     mappingLinkEl.hidden = true;
     mappingLinkEl.href = "#";
   }
@@ -283,9 +366,11 @@ async function refreshSelectedWorktree(keepStatusMessage = false) {
     const docText = await desktopApi.readDocument(selectedWorktree.docsPath, "README.md");
     state.editorText = docText;
     state.originalText = docText;
-    editorEl.value = docText;
-    editorMetaEl.textContent = `Editing ${currentReadmePath(selectedWorktree)}`;
+    editorEl.dataset.placeholder = "Start writing README content with the toolbar.";
+    applyMarkdownToEditor(docText);
     setEditorState(true);
+    renderEditorMeta();
+    updateEditorStats();
   }
 
   await refreshRepositoryContext(selectedWorktree);
@@ -434,13 +519,39 @@ worktreeListEl.addEventListener("change", async () => {
   await switchWorktree(worktreeListEl.value);
 });
 
+for (const button of toolbarButtons) {
+  button.addEventListener("click", () => {
+    executeEditorAction(button.dataset.editorAction);
+  });
+}
+
+mappingLinkEl.addEventListener("click", async (event) => {
+  if (mappingLinkEl.hidden || !mappingLinkEl.href || mappingLinkEl.href === "#") {
+    event.preventDefault();
+    return;
+  }
+
+  if (!desktopApi?.openExternalLink) {
+    return;
+  }
+
+  event.preventDefault();
+
+  try {
+    await desktopApi.openExternalLink(mappingLinkEl.href);
+  } catch (error) {
+    setStatus(`Failed to open GitHub link: ${error.message}`, true);
+  }
+});
+
 editorEl.addEventListener("input", () => {
-  state.editorText = editorEl.value;
-  const selectedWorktree = getSelectedWorktree();
-  const marker = hasUnsavedChanges() ? " (unsaved changes)" : "";
-  editorMetaEl.textContent = selectedWorktree
-    ? `Editing ${currentReadmePath(selectedWorktree)}${marker}`
-    : "Pick a project to load docs.";
+  handleEditorInput();
+});
+
+editorEl.addEventListener("paste", (event) => {
+  event.preventDefault();
+  const pastedText = event.clipboardData?.getData("text/plain") || "";
+  document.execCommand("insertText", false, pastedText);
 });
 
 saveDocEl.addEventListener("click", async () => {
@@ -459,7 +570,7 @@ saveDocEl.addEventListener("click", async () => {
     selectedProject.hasProjectDocs = selectedProject.worktrees.some((worktree) => worktree.hasProjectDocs);
     selectedProject.hasReadme = selectedProject.worktrees.some((worktree) => worktree.hasReadme);
 
-    editorMetaEl.textContent = `Editing ${currentReadmePath(selectedWorktree)}`;
+    renderEditorMeta();
     renderProjectDetails(selectedProject, selectedWorktree);
     renderProjects();
     setStatus("Saved.");
