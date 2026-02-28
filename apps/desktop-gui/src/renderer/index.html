@@ -25,7 +25,8 @@
 
       body {
         margin: 0;
-        min-height: 100vh;
+        height: 100vh;
+        overflow: hidden;
         color: var(--text);
         font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
         background:
@@ -34,12 +35,18 @@
           linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       }
 
+      html {
+        height: 100%;
+      }
+
       .app {
+        height: 100%;
         padding: 22px;
         display: grid;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
         gap: 14px;
-        min-height: 100vh;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .topbar {
@@ -56,7 +63,12 @@
         display: flex;
         justify-content: space-between;
         gap: 12px;
-        align-items: baseline;
+        align-items: flex-start;
+      }
+
+      .headline-copy {
+        display: grid;
+        gap: 6px;
       }
 
       .headline h1 {
@@ -71,10 +83,28 @@
         font-size: 0.95rem;
       }
 
-      .controls {
+      .header-actions {
         display: flex;
-        flex-wrap: wrap;
         gap: 10px;
+      }
+
+      .icon-button {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        border-radius: 12px;
+        background: #f5f9f6;
+        border: 1px solid var(--line);
+        color: #2a4f3c;
+      }
+
+      .icon-button.primary-icon {
+        background: linear-gradient(135deg, #2f9d68, #268455);
+        color: #f7fffb;
+        border-color: #2f9d68;
       }
 
       button {
@@ -109,6 +139,10 @@
         color: #2a4f3c;
       }
 
+      .icon-button {
+        padding: 0;
+      }
+
       .status {
         color: var(--muted);
         font-size: 0.92rem;
@@ -119,6 +153,7 @@
         grid-template-columns: 320px 1fr 310px;
         gap: 14px;
         min-height: 0;
+        overflow: hidden;
       }
 
       .panel {
@@ -129,6 +164,7 @@
         min-height: 0;
         display: grid;
         grid-template-rows: auto 1fr;
+        overflow: hidden;
       }
 
       .panel header {
@@ -139,15 +175,37 @@
 
       .panel-body {
         padding: 10px;
-        overflow: auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
 
       .projects {
         list-style: none;
         margin: 0;
         padding: 0;
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 8px;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        align-items: stretch;
+      }
+
+      .project-section {
+        margin: 8px 0 0;
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: #3f5f4e;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .project-section button {
+        width: 100%;
+        text-transform: none;
       }
 
       .project-item {
@@ -158,6 +216,7 @@
         cursor: pointer;
         display: grid;
         gap: 5px;
+        flex: 0 0 auto;
       }
 
       .project-item.active {
@@ -194,10 +253,35 @@
         color: #835228;
       }
 
+      .mapping-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #245c3f;
+        text-decoration: none;
+        font-weight: 640;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 10px;
+        width: max-content;
+        background: #f6fbf7;
+      }
+
+      .mapping-link:hover {
+        border-color: #9fceb1;
+        background: #eef8f1;
+      }
+
+      .mapping-link svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+
       textarea {
         width: 100%;
-        height: calc(100vh - 295px);
-        min-height: 320px;
+        height: auto;
+        min-height: 0;
         resize: vertical;
         border: 1px solid var(--line);
         border-radius: 12px;
@@ -205,6 +289,7 @@
         font: 0.95rem/1.5 "IBM Plex Mono", "SF Mono", monospace;
         background: #fbfefb;
         color: #1f3127;
+        flex: 1;
       }
 
       .editor-actions {
@@ -214,8 +299,12 @@
       }
 
       .stack {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 12px;
+        min-height: 0;
+        overflow: auto;
+        align-content: flex-start;
       }
 
       .box {
@@ -225,6 +314,7 @@
         background: #fbfefc;
         display: grid;
         gap: 8px;
+        flex: 0 0 auto;
       }
 
       .box h3 {
@@ -244,28 +334,69 @@
       .error {
         color: var(--danger);
       }
+
+      @media (max-width: 1240px) {
+        .layout {
+          grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr) minmax(220px, 38%);
+        }
+
+        .layout > article:nth-child(3) {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 920px) {
+        body {
+          overflow: auto;
+        }
+
+        .app {
+          height: auto;
+          min-height: 100%;
+          overflow: visible;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto;
+          overflow: visible;
+        }
+
+        .panel {
+          min-height: 320px;
+        }
+
+        .panel-body {
+          overflow: auto;
+        }
+
+        textarea {
+          min-height: 280px;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="app">
       <section class="topbar">
         <div class="headline">
-          <h1>ProjectBranch Desktop POC</h1>
-          <p>Discover docs, edit plans, and switch branches in one place.</p>
+          <div class="headline-copy">
+            <h1>ProjectBranch Desktop POC</h1>
+            <p>Discover docs, edit plans, and switch branches in one place.</p>
+          </div>
+          <div class="header-actions">
+            <button id="refreshProject" class="icon-button" title="Refresh projects" aria-label="Refresh projects">&#x21bb;</button>
+            <button id="openSettings" class="icon-button primary-icon" title="Open settings" aria-label="Open settings">&#9881;</button>
+          </div>
         </div>
-        <div class="controls">
-          <button id="pickFolders" class="primary">Pick Workspace Folders</button>
-          <button id="discoverProjects" class="secondary">Discover Docs Projects</button>
-          <button id="refreshProject" class="ghost">Refresh Selected Project</button>
-        </div>
-        <div id="status" class="status">Ready.</div>
+        <div id="status" class="status"></div>
       </section>
 
       <section class="layout">
         <article class="panel">
           <header>Discovered Projects</header>
           <div class="panel-body">
-            <div id="rootsSummary" class="status">No root folders selected yet.</div>
             <ul id="projects" class="projects"></ul>
           </div>
         </article>
@@ -285,6 +416,19 @@
           <header>Repository Context</header>
           <div class="panel-body stack">
             <div class="box">
+              <h3>Project Details</h3>
+              <div id="projectPath" class="status">No project selected.</div>
+              <div id="projectSetup" class="chip">No setup available</div>
+              <div id="worktreeSetup" class="chip">No worktree selected</div>
+            </div>
+
+            <div class="box">
+              <h3>Worktree</h3>
+              <div id="activeWorktree" class="status">No project selected.</div>
+              <select id="worktreeList" disabled></select>
+            </div>
+
+            <div class="box">
               <h3>Branch</h3>
               <div id="activeBranch" class="status">No repository selected.</div>
               <select id="branchList" disabled></select>
@@ -294,6 +438,12 @@
             <div class="box">
               <h3>Remote Mapping</h3>
               <div id="mappingStatus" class="status">No repository selected.</div>
+              <a id="mappingLink" class="mapping-link" href="#" target="_blank" rel="noreferrer" hidden>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52 0-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.01.08-2.1 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.09.16 1.9.08 2.1.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8"></path>
+                </svg>
+                GitHub
+              </a>
             </div>
           </div>
         </article>

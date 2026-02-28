@@ -45,6 +45,12 @@ test("lists and switches branches using git shell adapter", async () => {
 
     const remotes = await gitPort.getRemotes(repoPath);
     assert.deepEqual(remotes, [{ name: "origin", url: "git@github.com:acme/projectbranch.git" }]);
+
+    const commonDirectory = await gitPort.getCommonDirectory(repoPath);
+    assert.match(commonDirectory, /\.git$/);
+
+    const isBare = await gitPort.isBareRepository(repoPath);
+    assert.equal(isBare, false);
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }
