@@ -1,0 +1,17 @@
+{
+  "name": "projectbranch-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.10.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "pnpm --filter @projectbranch/desktop-gui install-electron",
+    "test": "pnpm -r test",
+    "poc": "pnpm --filter @projectbranch/desktop-cli poc",
+    "desktop": "pnpm --filter @projectbranch/desktop-gui desktop"
+  }
+}
