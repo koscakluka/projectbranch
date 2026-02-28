@@ -109,6 +109,223 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+function getSelectionContext() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return null;
+  }
+
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed) {
+    return null;
+  }
+
+  let node = range.startContainer;
+  let offset = range.startOffset;
+
+  if (node.nodeType === 1) {
+    const previousNode = node.childNodes[offset - 1];
+    if (!previousNode || previousNode.nodeType !== 3) {
+      return null;
+    }
+
+    node = previousNode;
+    offset = node.textContent.length;
+  }
+
+  if (node.nodeType !== 3) {
+    return null;
+  }
+
+  return {
+    selection,
+    textNode: node,
+    offset,
+  };
+}
+
+function isInsideTag(node, tags) {
+  let current = node.nodeType === 1 ? node : node.parentElement;
+  while (current && current !== editorEl) {
+    if (tags.has(current.tagName)) {
+      return true;
+    }
+
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
+function getActiveBlock(node) {
+  let current = node.nodeType === 1 ? node : node.parentElement;
+  while (current && current !== editorEl) {
+    if (["P", "DIV", "LI", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE"].includes(current.tagName)) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
+function moveCaretAfter(node) {
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+  range.setStartAfter(node);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function moveCaretInsideStart(node) {
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function replaceMatchWithNode(textNode, startOffset, endOffset, replacementNode) {
+  const range = document.createRange();
+  range.setStart(textNode, startOffset);
+  range.setEnd(textNode, endOffset);
+  range.deleteContents();
+  range.insertNode(replacementNode);
+  moveCaretAfter(replacementNode);
+}
+
+function applyInlineMarkdownShortcut() {
+  const context = getSelectionContext();
+  if (!context) {
+    return false;
+  }
+
+  if (isInsideTag(context.textNode, new Set(["PRE", "CODE", "A"]))) {
+    return false;
+  }
+
+  const beforeCaret = context.textNode.textContent.slice(0, context.offset);
+
+  const linkMatch = beforeCaret.match(/\[([^\]\n]+)\]\(([^()\s]+)\)$/);
+  if (linkMatch) {
+    const href = linkMatch[2].trim();
+    if (href) {
+      const start = context.offset - linkMatch[0].length;
+      const linkNode = document.createElement("a");
+      linkNode.href = href;
+      linkNode.textContent = linkMatch[1];
+      replaceMatchWithNode(context.textNode, start, context.offset, linkNode);
+      return true;
+    }
+  }
+
+  const boldMatch = beforeCaret.match(/\*\*([^*\n]+)\*\*$/);
+  if (boldMatch) {
+    const start = context.offset - boldMatch[0].length;
+    const strongNode = document.createElement("strong");
+    strongNode.textContent = boldMatch[1];
+    replaceMatchWithNode(context.textNode, start, context.offset, strongNode);
+    return true;
+  }
+
+  const codeMatch = beforeCaret.match(/`([^`\n]+)`$/);
+  if (codeMatch) {
+    const start = context.offset - codeMatch[0].length;
+    const codeNode = document.createElement("code");
+    codeNode.textContent = codeMatch[1];
+    replaceMatchWithNode(context.textNode, start, context.offset, codeNode);
+    return true;
+  }
+
+  const italicMatch = beforeCaret.match(/\*([^*\n]+)\*$/);
+  if (italicMatch) {
+    const start = context.offset - italicMatch[0].length;
+    if (start === 0 || beforeCaret[start - 1] !== "*") {
+      const emNode = document.createElement("em");
+      emNode.textContent = italicMatch[1];
+      replaceMatchWithNode(context.textNode, start, context.offset, emNode);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function applyBlockMarkdownShortcut() {
+  const context = getSelectionContext();
+  if (!context) {
+    return false;
+  }
+
+  const block = getActiveBlock(context.textNode);
+  if (!block || !["P", "DIV"].includes(block.tagName)) {
+    return false;
+  }
+
+  const blockText = block.textContent || "";
+  const headingMatch = blockText.match(/^(#{1,6}) $/);
+
+  let action = null;
+  if (headingMatch) {
+    action = { type: "heading", value: `h${headingMatch[1].length}` };
+  } else if (blockText === "> ") {
+    action = { type: "blockquote" };
+  } else if (blockText === "- " || blockText === "* ") {
+    action = { type: "unordered-list" };
+  } else if (/^1[.)] $/.test(blockText)) {
+    action = { type: "ordered-list" };
+  }
+
+  if (!action) {
+    return false;
+  }
+
+  block.textContent = "";
+  if (!block.firstChild) {
+    block.append(document.createElement("br"));
+  }
+
+  moveCaretInsideStart(block);
+  if (action.type === "heading") {
+    document.execCommand("formatBlock", false, action.value);
+  } else if (action.type === "blockquote") {
+    document.execCommand("formatBlock", false, "blockquote");
+  } else if (action.type === "unordered-list") {
+    document.execCommand("insertUnorderedList");
+  } else if (action.type === "ordered-list") {
+    document.execCommand("insertOrderedList");
+  }
+
+  return true;
+}
+
+function applyMarkdownTypingShortcuts(event) {
+  if (editorEl.contentEditable !== "true" || event.inputType !== "insertText") {
+    return false;
+  }
+
+  if (event.data === " " && applyBlockMarkdownShortcut()) {
+    return true;
+  }
+
+  if (["*", "`", ")"].includes(event.data) && applyInlineMarkdownShortcut()) {
+    return true;
+  }
+
+  return false;
+}
+
 function renderEditorMeta() {
   const selectedWorktree = getSelectedWorktree();
   const marker = hasUnsavedChanges() ? " (unsaved changes)" : "";
@@ -544,7 +761,12 @@ mappingLinkEl.addEventListener("click", async (event) => {
   }
 });
 
-editorEl.addEventListener("input", () => {
+editorEl.addEventListener("input", (event) => {
+  const converted = applyMarkdownTypingShortcuts(event);
+  if (converted) {
+    ensureEditorMarkup();
+  }
+
   handleEditorInput();
 });
 
