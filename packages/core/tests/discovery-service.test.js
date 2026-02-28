@@ -40,11 +40,33 @@ test("discovers docs/project in direct and one nested level", async () => {
   try {
     const projects = await service.discover([fixture.tempRoot]);
     assert.equal(projects.length, 2);
+    assert.equal(projects.every((project) => project.hasProjectDocs), true);
 
     const nestedProject = projects.find((project) => project.repositoryPath.endsWith("repo-nested"));
     assert.ok(nestedProject);
     assert.equal(nestedProject.git.hasMetadata, true);
     assert.equal(nestedProject.git.isWorktree, true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("can include git repositories without docs/project", async () => {
+  const fixture = await setupFixture();
+  const service = new DiscoveryService({
+    fsPort: createNodeFsTestPort(),
+    nestedDepth: 1,
+    includeWithoutDocs: true,
+  });
+
+  try {
+    const projects = await service.discover([fixture.tempRoot]);
+    assert.equal(projects.length, 3);
+
+    const withoutDocs = projects.find((project) => project.repositoryPath.endsWith("repo-no-docs"));
+    assert.ok(withoutDocs);
+    assert.equal(withoutDocs.hasProjectDocs, false);
+    assert.equal(withoutDocs.hasReadme, false);
   } finally {
     await fixture.cleanup();
   }

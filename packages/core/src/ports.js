@@ -35,6 +35,8 @@
  * @property {(repoPath: string) => Promise<GitBranch[]>} listBranches
  * @property {(repoPath: string, branchName: string) => Promise<void>} switchBranch
  * @property {(repoPath: string) => Promise<GitRemote[]>} getRemotes
+ * @property {(repoPath: string) => Promise<string>} getCommonDirectory
+ * @property {(repoPath: string) => Promise<boolean>} isBareRepository
  */
 
 /**
